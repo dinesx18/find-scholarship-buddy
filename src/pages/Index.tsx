@@ -1,16 +1,20 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { StudentProfile, MatchedScholarship, matchScholarships } from "@/lib/scholarshipMatcher";
 import ManualForm from "@/components/ManualForm";
 import NLPInput from "@/components/NLPInput";
 import ScholarshipCard from "@/components/ScholarshipCard";
-import { GraduationCap, FileText, Sparkles, ArrowLeft, SearchX } from "lucide-react";
+import { GraduationCap, FileText, Sparkles, ArrowLeft, SearchX, ShieldCheck, Bookmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useSavedScholarships } from "@/hooks/useSavedScholarships";
 
 type Mode = "home" | "manual" | "nlp";
 
 export default function Index() {
+  const navigate = useNavigate();
   const [mode, setMode] = useState<Mode>("home");
   const [results, setResults] = useState<MatchedScholarship[] | null>(null);
+  const { savedIds, toggleSave, isSaved } = useSavedScholarships();
 
   const handleSearch = (profile: StudentProfile) => {
     const matched = matchScholarships(profile);
@@ -29,14 +33,20 @@ export default function Index() {
     return (
       <div className="min-h-screen bg-background">
         <header className="border-b border-border bg-card">
-          <div className="container max-w-5xl py-4 flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={resetToHome}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div className="flex items-center gap-2">
-              <GraduationCap className="h-6 w-6 text-primary" />
-              <span className="font-heading font-bold text-lg text-foreground">Smart Scholarship Finder</span>
+          <div className="container max-w-5xl py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" size="icon" onClick={resetToHome}>
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div className="flex items-center gap-2">
+                <GraduationCap className="h-6 w-6 text-primary" />
+                <span className="font-heading font-bold text-lg text-foreground">Smart Scholarship Finder</span>
+              </div>
             </div>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/saved")} className="flex items-center gap-1.5">
+              <Bookmark className="h-4 w-4" />
+              Saved {savedIds.length > 0 && <span className="text-xs bg-primary text-primary-foreground rounded-full px-1.5">{savedIds.length}</span>}
+            </Button>
           </div>
         </header>
 
@@ -63,7 +73,7 @@ export default function Index() {
               <h2 className="font-heading text-lg font-semibold text-foreground">🎯 Best Matches</h2>
               <div className="grid gap-4">
                 {highMatches.map((s, i) => (
-                  <ScholarshipCard key={s.id} scholarship={s} index={i} />
+                  <ScholarshipCard key={s.id} scholarship={s} index={i} isSaved={isSaved(s.id)} onToggleSave={() => toggleSave(s.id)} />
                 ))}
               </div>
             </div>
@@ -76,7 +86,7 @@ export default function Index() {
               </h2>
               <div className="grid gap-4">
                 {otherMatches.map((s, i) => (
-                  <ScholarshipCard key={s.id} scholarship={s} index={i + highMatches.length} />
+                  <ScholarshipCard key={s.id} scholarship={s} index={i + highMatches.length} isSaved={isSaved(s.id)} onToggleSave={() => toggleSave(s.id)} />
                 ))}
               </div>
             </div>
@@ -89,6 +99,14 @@ export default function Index() {
   if (mode === "home") {
     return (
       <div className="min-h-screen flex flex-col">
+        {/* Nav */}
+        <div className="absolute top-4 right-4 z-10">
+          <Button variant="ghost" size="sm" onClick={() => navigate("/saved")} className="text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10 flex items-center gap-1.5">
+            <Bookmark className="h-4 w-4" />
+            Saved {savedIds.length > 0 && <span className="text-xs bg-primary-foreground/20 rounded-full px-1.5">{savedIds.length}</span>}
+          </Button>
+        </div>
+
         {/* Hero */}
         <div className="gradient-hero text-primary-foreground flex-1 flex items-center justify-center px-4 py-20">
           <div className="text-center max-w-2xl mx-auto space-y-6 animate-fade-in-up">
@@ -110,15 +128,15 @@ export default function Index() {
                 onClick={() => setMode("manual")}
                 className="bg-primary-foreground text-foreground hover:bg-primary-foreground/90 font-semibold text-base px-8"
               >
-                <FileText className="h-5 w-5 mr-2" /> Start with Form
+                <FileText className="h-5 w-5 mr-2" /> Scholarship Finder
               </Button>
               <Button
                 size="lg"
-                onClick={() => setMode("nlp")}
+                onClick={() => navigate("/fake-detector")}
                 variant="outline"
                 className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10 font-semibold text-base px-8"
               >
-                <Sparkles className="h-5 w-5 mr-2" /> Try AI Search
+                <ShieldCheck className="h-5 w-5 mr-2" /> Fake Scholarship Detector
               </Button>
             </div>
           </div>
@@ -130,8 +148,8 @@ export default function Index() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
               {[
                 { icon: "🎯", title: "Smart Matching", desc: "Get a match percentage for every scholarship based on your profile." },
-                { icon: "🤖", title: "AI-Powered Input", desc: "Just type your situation in plain English — we'll understand." },
-                { icon: "📊", title: "20+ Scholarships", desc: "Comprehensive database covering national and state-level schemes." },
+                { icon: "🤖", title: "NLP-Powered Input", desc: "Just type your situation in plain English — we'll understand." },
+                { icon: "🛡️", title: "Scam Detection", desc: "Verify if a scholarship is real or fake before applying." },
               ].map((f) => (
                 <div key={f.title} className="space-y-2">
                   <div className="text-3xl">{f.icon}</div>
@@ -150,14 +168,20 @@ export default function Index() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card">
-        <div className="container max-w-2xl py-4 flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={resetToHome}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex items-center gap-2">
-            <GraduationCap className="h-6 w-6 text-primary" />
-            <span className="font-heading font-bold text-lg text-foreground">Smart Scholarship Finder</span>
+        <div className="container max-w-2xl py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={resetToHome}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div className="flex items-center gap-2">
+              <GraduationCap className="h-6 w-6 text-primary" />
+              <span className="font-heading font-bold text-lg text-foreground">Smart Scholarship Finder</span>
+            </div>
           </div>
+          <Button variant="ghost" size="sm" onClick={() => navigate("/saved")} className="flex items-center gap-1.5">
+            <Bookmark className="h-4 w-4" />
+            Saved
+          </Button>
         </div>
       </header>
 
@@ -174,7 +198,7 @@ export default function Index() {
             onClick={() => setMode("nlp")}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-md text-sm font-medium transition-all ${mode === "nlp" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
           >
-            <Sparkles className="h-4 w-4" /> AI Mode
+            <Sparkles className="h-4 w-4" /> NLP Mode
           </button>
         </div>
 

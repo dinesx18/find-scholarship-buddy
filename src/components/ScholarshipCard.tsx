@@ -1,7 +1,7 @@
 import { MatchedScholarship } from "@/lib/scholarshipMatcher";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, Award, Calendar, CheckCircle2 } from "lucide-react";
+import { ExternalLink, Award, Calendar, CheckCircle2, Bookmark } from "lucide-react";
 
 function getMatchLabel(percentage: number) {
   if (percentage >= 85) return { text: "Highly Matched", class: "bg-accent text-accent-foreground" };
@@ -9,15 +9,32 @@ function getMatchLabel(percentage: number) {
   return { text: "Partial Match", class: "bg-muted text-muted-foreground" };
 }
 
-export default function ScholarshipCard({ scholarship, index }: { scholarship: MatchedScholarship; index: number }) {
+interface Props {
+  scholarship: MatchedScholarship;
+  index: number;
+  isSaved?: boolean;
+  onToggleSave?: () => void;
+}
+
+export default function ScholarshipCard({ scholarship, index, isSaved, onToggleSave }: Props) {
   const label = getMatchLabel(scholarship.matchPercentage);
 
   return (
     <div
-      className="group rounded-lg border border-border bg-card p-6 shadow-card transition-all duration-300 hover:shadow-card-hover hover:-translate-y-1"
+      className="group rounded-lg border border-border bg-card p-6 shadow-card transition-all duration-300 hover:shadow-card-hover hover:-translate-y-1 relative"
       style={{ animationDelay: `${index * 80}ms` }}
     >
-      <div className="flex items-start justify-between gap-3 mb-3">
+      {onToggleSave && (
+        <button
+          onClick={onToggleSave}
+          className="absolute top-4 right-4 p-1.5 rounded-md hover:bg-muted transition-colors"
+          title={isSaved ? "Remove from saved" : "Save scholarship"}
+        >
+          <Bookmark className={`h-5 w-5 transition-colors ${isSaved ? "fill-primary text-primary" : "text-muted-foreground"}`} />
+        </button>
+      )}
+
+      <div className="flex items-start justify-between gap-3 mb-3 pr-8">
         <div className="flex items-center gap-2">
           <Award className="h-5 w-5 text-primary shrink-0" />
           <h3 className="font-heading text-lg font-semibold text-card-foreground leading-tight">{scholarship.name}</h3>
@@ -27,7 +44,6 @@ export default function ScholarshipCard({ scholarship, index }: { scholarship: M
 
       <p className="text-sm text-muted-foreground mb-4">{scholarship.description}</p>
 
-      {/* Match percentage bar */}
       <div className="mb-4">
         <div className="flex justify-between text-xs mb-1">
           <span className="text-muted-foreground">Match Score</span>
@@ -41,7 +57,6 @@ export default function ScholarshipCard({ scholarship, index }: { scholarship: M
         </div>
       </div>
 
-      {/* Match reasons */}
       {scholarship.matchReasons.length > 0 && (
         <div className="mb-4 space-y-1">
           {scholarship.matchReasons.slice(0, 3).map((reason, i) => (
