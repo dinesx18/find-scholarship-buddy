@@ -181,7 +181,7 @@ export default function Index() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {trending.map((s) => (
                 <div key={s.id} className="rounded-lg border border-border bg-background p-4 shadow-card hover:shadow-card-hover transition-all">
-                  <Badge className="bg-destructive/10 text-destructive text-[10px] mb-2">{t("trending")}</Badge>
+                  <Badge variant="destructive" className="text-[10px] mb-2">{t("trending")}</Badge>
                   <h3 className="font-heading text-sm font-semibold text-foreground leading-tight mb-1">{s.name}</h3>
                   <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{s.description}</p>
                   <div className="flex items-center justify-between">
