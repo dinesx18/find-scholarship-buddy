@@ -1,24 +1,42 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { StudentProfile, MatchedScholarship, matchScholarships } from "@/lib/scholarshipMatcher";
 import ManualForm from "@/components/ManualForm";
 import NLPInput from "@/components/NLPInput";
 import ScholarshipCard from "@/components/ScholarshipCard";
-import { GraduationCap, FileText, Sparkles, ArrowLeft, SearchX, ShieldCheck, Bookmark } from "lucide-react";
+import SkeletonCard from "@/components/SkeletonCard";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
+import Chatbot from "@/components/Chatbot";
+import { GraduationCap, FileText, Sparkles, ArrowLeft, SearchX, ShieldCheck, Bookmark, LayoutDashboard, Flame } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useSavedScholarships } from "@/hooks/useSavedScholarships";
+import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
+import { useLanguage } from "@/i18n/LanguageContext";
+import { scholarships } from "@/data/scholarships";
+import { Calendar, ExternalLink } from "lucide-react";
 
 type Mode = "home" | "manual" | "nlp";
 
+const trendingIds = ["1", "3", "4", "5"];
+
 export default function Index() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [mode, setMode] = useState<Mode>("home");
   const [results, setResults] = useState<MatchedScholarship[] | null>(null);
+  const [loading, setLoading] = useState(false);
   const { savedIds, toggleSave, isSaved } = useSavedScholarships();
+  const { addViewed } = useRecentlyViewed();
 
   const handleSearch = (profile: StudentProfile) => {
-    const matched = matchScholarships(profile);
-    setResults(matched);
+    setLoading(true);
+    setTimeout(() => {
+      const matched = matchScholarships(profile);
+      setResults(matched);
+      setLoading(false);
+      matched.forEach((m) => addViewed(m.id));
+    }, 1000);
   };
 
   const resetToHome = () => {
@@ -26,7 +44,10 @@ export default function Index() {
     setResults(null);
   };
 
-  if (results) {
+  const trending = scholarships.filter((s) => trendingIds.includes(s.id));
+
+  // Results view
+  if (results && !loading) {
     const highMatches = results.filter((r) => r.matchPercentage >= 60);
     const otherMatches = results.filter((r) => r.matchPercentage < 60);
 
@@ -40,37 +61,40 @@ export default function Index() {
               </Button>
               <div className="flex items-center gap-2">
                 <GraduationCap className="h-6 w-6 text-primary" />
-                <span className="font-heading font-bold text-lg text-foreground">Smart Scholarship Finder</span>
+                <span className="font-heading font-bold text-lg text-foreground">{t("appName")}</span>
               </div>
             </div>
-            <Button variant="ghost" size="sm" onClick={() => navigate("/saved")} className="flex items-center gap-1.5">
-              <Bookmark className="h-4 w-4" />
-              Saved {savedIds.length > 0 && <span className="text-xs bg-primary text-primary-foreground rounded-full px-1.5">{savedIds.length}</span>}
-            </Button>
+            <div className="flex items-center gap-2">
+              <LanguageSwitcher />
+              <Button variant="ghost" size="sm" onClick={() => navigate("/saved")} className="flex items-center gap-1.5">
+                <Bookmark className="h-4 w-4" />
+                {t("saved")} {savedIds.length > 0 && <span className="text-xs bg-primary text-primary-foreground rounded-full px-1.5">{savedIds.length}</span>}
+              </Button>
+            </div>
           </div>
         </header>
 
         <main className="container max-w-5xl py-8 px-4">
           <div className="mb-6">
             <h1 className="font-heading text-2xl font-bold text-foreground">
-              {results.length > 0 ? `Found ${results.length} Scholarship${results.length > 1 ? "s" : ""}` : "No Scholarships Found"}
+              {results.length > 0 ? `${t("found")} ${results.length} ${t("scholarships")}` : t("noScholarships")}
             </h1>
             <p className="text-muted-foreground text-sm mt-1">
-              {results.length > 0 ? "Sorted by match percentage" : "Try adjusting your criteria for better results."}
+              {results.length > 0 ? t("sortedByMatch") : t("tryAdjusting")}
             </p>
           </div>
 
           {results.length === 0 && (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <SearchX className="h-16 w-16 text-muted-foreground/40 mb-4" />
-              <p className="text-muted-foreground">No scholarships matched your profile.</p>
-              <Button className="mt-4" variant="outline" onClick={resetToHome}>Try Again</Button>
+              <p className="text-muted-foreground">{t("noScholarships")}</p>
+              <Button className="mt-4" variant="outline" onClick={resetToHome}>{t("tryAgain")}</Button>
             </div>
           )}
 
           {highMatches.length > 0 && (
             <div className="space-y-4 mb-8">
-              <h2 className="font-heading text-lg font-semibold text-foreground">🎯 Best Matches</h2>
+              <h2 className="font-heading text-lg font-semibold text-foreground">{t("bestMatches")}</h2>
               <div className="grid gap-4">
                 {highMatches.map((s, i) => (
                   <ScholarshipCard key={s.id} scholarship={s} index={i} isSaved={isSaved(s.id)} onToggleSave={() => toggleSave(s.id)} />
@@ -82,7 +106,7 @@ export default function Index() {
           {otherMatches.length > 0 && (
             <div className="space-y-4">
               <h2 className="font-heading text-lg font-semibold text-foreground">
-                {highMatches.length > 0 ? "📋 Other Matches" : "📋 Closest Matches"}
+                {highMatches.length > 0 ? t("otherMatches") : t("closestMatches")}
               </h2>
               <div className="grid gap-4">
                 {otherMatches.map((s, i) => (
@@ -92,18 +116,25 @@ export default function Index() {
             </div>
           )}
         </main>
+        <Chatbot />
       </div>
     );
   }
 
+  // Home view
   if (mode === "home") {
     return (
       <div className="min-h-screen flex flex-col">
         {/* Nav */}
-        <div className="absolute top-4 right-4 z-10">
+        <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+          <LanguageSwitcher className="text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10" />
+          <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")} className="text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10 flex items-center gap-1.5">
+            <LayoutDashboard className="h-4 w-4" />
+            {t("dashboard")}
+          </Button>
           <Button variant="ghost" size="sm" onClick={() => navigate("/saved")} className="text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10 flex items-center gap-1.5">
             <Bookmark className="h-4 w-4" />
-            Saved {savedIds.length > 0 && <span className="text-xs bg-primary-foreground/20 rounded-full px-1.5">{savedIds.length}</span>}
+            {t("saved")} {savedIds.length > 0 && <span className="text-xs bg-primary-foreground/20 rounded-full px-1.5">{savedIds.length}</span>}
           </Button>
         </div>
 
@@ -112,14 +143,14 @@ export default function Index() {
           <div className="text-center max-w-2xl mx-auto space-y-6 animate-fade-in-up">
             <div className="inline-flex items-center gap-2 rounded-full border border-primary-foreground/20 px-4 py-1.5 text-sm backdrop-blur-sm bg-primary-foreground/5">
               <GraduationCap className="h-4 w-4" />
-              Smart Scholarship Finder
+              {t("appName")}
             </div>
             <h1 className="font-heading text-4xl sm:text-5xl md:text-6xl font-bold leading-tight">
-              Find Scholarships Easily with{" "}
-              <span className="bg-gradient-to-r from-blue-300 to-emerald-300 bg-clip-text text-transparent">AI</span>
+              {t("tagline")}{" "}
+              <span className="bg-gradient-to-r from-blue-300 to-emerald-300 bg-clip-text text-transparent">{t("ai")}</span>
             </h1>
             <p className="text-lg text-primary-foreground/70 max-w-lg mx-auto">
-              Discover scholarships that match your profile. Use our structured form or simply describe yourself in plain English.
+              {t("heroDesc")}
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
@@ -128,28 +159,56 @@ export default function Index() {
                 onClick={() => setMode("manual")}
                 className="bg-primary-foreground text-foreground hover:bg-primary-foreground/90 font-semibold text-base px-8"
               >
-                <FileText className="h-5 w-5 mr-2" /> Scholarship Finder
+                <FileText className="h-5 w-5 mr-2" /> {t("scholarshipFinder")}
               </Button>
               <Button
                 size="lg"
                 onClick={() => navigate("/fake-detector")}
-                variant="outline"
-                className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10 font-semibold text-base px-8"
+                className="bg-primary-foreground text-foreground hover:bg-primary-foreground/90 font-semibold text-base px-8"
               >
-                <ShieldCheck className="h-5 w-5 mr-2" /> Fake Scholarship Detector
+                <ShieldCheck className="h-5 w-5 mr-2" /> {t("fakeDetector")}
               </Button>
             </div>
           </div>
         </div>
 
+        {/* Trending Section */}
+        <div className="bg-card py-12 px-4">
+          <div className="container max-w-4xl">
+            <h2 className="font-heading text-2xl font-bold text-foreground text-center mb-8 flex items-center justify-center gap-2">
+              <Flame className="h-6 w-6 text-destructive" /> {t("trendingScholarships")}
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {trending.map((s) => (
+                <div key={s.id} className="rounded-lg border border-border bg-background p-4 shadow-card hover:shadow-card-hover transition-all">
+                  <Badge className="bg-destructive/10 text-destructive text-[10px] mb-2">{t("trending")}</Badge>
+                  <h3 className="font-heading text-sm font-semibold text-foreground leading-tight mb-1">{s.name}</h3>
+                  <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{s.description}</p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      {new Date(s.deadline).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                    </span>
+                    <Button size="sm" asChild className="gradient-primary text-primary-foreground border-0 h-7 text-xs px-3">
+                      <a href={s.applyLink} target="_blank" rel="noopener noreferrer">
+                        {t("apply")} <ExternalLink className="h-3 w-3 ml-1" />
+                      </a>
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
         {/* Features */}
-        <div className="bg-card py-16 px-4">
+        <div className="bg-background py-16 px-4">
           <div className="container max-w-4xl">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
               {[
-                { icon: "🎯", title: "Smart Matching", desc: "Get a match percentage for every scholarship based on your profile." },
-                { icon: "🤖", title: "NLP-Powered Input", desc: "Just type your situation in plain English — we'll understand." },
-                { icon: "🛡️", title: "Scam Detection", desc: "Verify if a scholarship is real or fake before applying." },
+                { icon: "🎯", title: t("smartMatching"), desc: t("smartMatchingDesc") },
+                { icon: "🤖", title: t("nlpPowered"), desc: t("nlpPoweredDesc") },
+                { icon: "🛡️", title: t("scamDetection"), desc: t("scamDetectionDesc") },
               ].map((f) => (
                 <div key={f.title} className="space-y-2">
                   <div className="text-3xl">{f.icon}</div>
@@ -160,6 +219,7 @@ export default function Index() {
             </div>
           </div>
         </div>
+        <Chatbot />
       </div>
     );
   }
@@ -175,13 +235,16 @@ export default function Index() {
             </Button>
             <div className="flex items-center gap-2">
               <GraduationCap className="h-6 w-6 text-primary" />
-              <span className="font-heading font-bold text-lg text-foreground">Smart Scholarship Finder</span>
+              <span className="font-heading font-bold text-lg text-foreground">{t("appName")}</span>
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => navigate("/saved")} className="flex items-center gap-1.5">
-            <Bookmark className="h-4 w-4" />
-            Saved
-          </Button>
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher />
+            <Button variant="ghost" size="sm" onClick={() => navigate("/saved")} className="flex items-center gap-1.5">
+              <Bookmark className="h-4 w-4" />
+              {t("saved")}
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -192,18 +255,26 @@ export default function Index() {
             onClick={() => setMode("manual")}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-md text-sm font-medium transition-all ${mode === "manual" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
           >
-            <FileText className="h-4 w-4" /> Form Mode
+            <FileText className="h-4 w-4" /> {t("formMode")}
           </button>
           <button
             onClick={() => setMode("nlp")}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-md text-sm font-medium transition-all ${mode === "nlp" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
           >
-            <Sparkles className="h-4 w-4" /> NLP Mode
+            <Sparkles className="h-4 w-4" /> {t("nlpMode")}
           </button>
         </div>
 
-        {mode === "manual" ? <ManualForm onSearch={handleSearch} /> : <NLPInput onSearch={handleSearch} />}
+        {/* Loading */}
+        {loading && (
+          <div className="grid gap-4">
+            {[1, 2, 3].map((i) => <SkeletonCard key={i} />)}
+          </div>
+        )}
+
+        {!loading && (mode === "manual" ? <ManualForm onSearch={handleSearch} /> : <NLPInput onSearch={handleSearch} />)}
       </main>
+      <Chatbot />
     </div>
   );
 }
